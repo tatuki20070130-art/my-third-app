@@ -58,3 +58,4 @@ Vercelへのデプロイ手順は [DEPLOY.md](./DEPLOY.md) を参照してくだ
 
 - **Git初心者の方**: [GITHUB_SETUP.md](./GITHUB_SETUP.md) - ターミナルの使い方から詳しく説明
 - **デプロイ手順**: [DEPLOY.md](./DEPLOY.md) - Vercelデプロイとスマホ設定の完全ガイド
+# my-third-app
