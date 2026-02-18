@@ -245,7 +245,8 @@ export function StudyTimePage() {
     .reduce((sum, r) => sum + r.durationMinutes, 0);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-violet-50/80 to-background">
+    <div className="relative min-h-screen bg-gradient-to-b from-cyan-50/80 via-white to-slate-50">
+      <div className="pointer-events-none absolute inset-x-0 top-[-140px] h-[320px] bg-gradient-to-r from-cyan-200/50 via-sky-100/40 to-transparent blur-3xl" />
       {/* 編集モーダル */}
       <dialog
         ref={editDialogRef}
@@ -324,11 +325,13 @@ export function StudyTimePage() {
 
       <div className="mx-auto max-w-2xl px-4 py-8 sm:py-12">
         <header className="mb-8 text-center">
-          <h1 className="flex items-center justify-center gap-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          <h1 className="flex items-center justify-center gap-3 text-3xl font-bold tracking-tight sm:text-4xl">
             <BookOpen className="h-8 w-8 text-primary" />
-            作業時間記録
+            <span className="bg-gradient-to-r from-cyan-700 via-cyan-600 to-sky-500 bg-clip-text text-transparent">
+              作業時間記録
+            </span>
           </h1>
-          <p className="mt-2 text-muted-foreground">
+          <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted-foreground sm:text-base">
             何を・いつ・どれくらいやったか記録しよう
           </p>
         </header>
