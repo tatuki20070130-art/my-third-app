@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { format, startOfDay } from "date-fns";
 import { ja } from "date-fns/locale";
-import { Clock, BookOpen, Trash2, Play, Square, Settings2, Plus, Pencil, Target } from "lucide-react";
+import { Clock, BookOpen, Trash2, Play, Square, Settings2, Plus, Pencil, Target, Pause } from "lucide-react";
 import type { StudyRecord, Subject } from "@/types/study";
 import { getRecords, addRecord, deleteRecord, updateRecord, getTodayTargetHours, saveTodayTargetHours } from "@/lib/storage";
 import {
@@ -95,14 +95,24 @@ export function StudyTimePage() {
 
   // タイマー（ストップウォッチ）
   const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [timerStartTime, setTimerStartTime] = useState<number | null>(null);
+  const [pausedElapsedSeconds, setPausedElapsedSeconds] = useState(0);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    if (!isTimerRunning || timerStartTime === null) return;
+    if (!isTimerRunning || isPaused || timerStartTime === null) {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+      return;
+    }
     timerIntervalRef.current = setInterval(() => {
-      setElapsedSeconds(Math.floor((Date.now() - timerStartTime) / 1000));
+      const now = Date.now();
+      const totalElapsed = pausedElapsedSeconds + Math.floor((now - timerStartTime) / 1000);
+      setElapsedSeconds(totalElapsed);
     }, 100);
     return () => {
       if (timerIntervalRef.current) {
@@ -110,14 +120,32 @@ export function StudyTimePage() {
         timerIntervalRef.current = null;
       }
     };
-  }, [isTimerRunning, timerStartTime]);
+  }, [isTimerRunning, isPaused, timerStartTime, pausedElapsedSeconds]);
 
   const handleStartTimer = () => {
     const now = Date.now();
     setTimerStartTime(now);
     setStartedAt(format(new Date(now), "yyyy-MM-dd'T'HH:mm"));
     setIsTimerRunning(true);
+    setIsPaused(false);
+    setPausedElapsedSeconds(0);
     setElapsedSeconds(0);
+  };
+
+  const handlePauseTimer = () => {
+    if (timerStartTime !== null) {
+      const now = Date.now();
+      const currentElapsed = pausedElapsedSeconds + Math.floor((now - timerStartTime) / 1000);
+      setPausedElapsedSeconds(currentElapsed);
+      setElapsedSeconds(currentElapsed);
+    }
+    setIsPaused(true);
+  };
+
+  const handleResumeTimer = () => {
+    const now = Date.now();
+    setTimerStartTime(now);
+    setIsPaused(false);
   };
 
   const handleStopTimer = () => {
@@ -125,12 +153,12 @@ export function StudyTimePage() {
       clearInterval(timerIntervalRef.current);
       timerIntervalRef.current = null;
     }
-    const total = Math.floor(
-      timerStartTime !== null ? (Date.now() - timerStartTime) / 1000 : 0
-    );
+    const total = elapsedSeconds;
     setDurationMinutes(Math.max(1, Math.ceil(total / 60)));
     setIsTimerRunning(false);
+    setIsPaused(false);
     setTimerStartTime(null);
+    setPausedElapsedSeconds(0);
     setElapsedSeconds(0);
   };
 
@@ -432,7 +460,9 @@ export function StudyTimePage() {
                   aria-live="polite"
                   aria-label={
                     isTimerRunning
-                      ? `計測中 ${formatStopwatch(elapsedSeconds)}`
+                      ? isPaused
+                        ? `一時停止中 ${formatStopwatch(elapsedSeconds)}`
+                        : `計測中 ${formatStopwatch(elapsedSeconds)}`
                       : "ストップウォッチ"
                   }
                 >
@@ -440,7 +470,9 @@ export function StudyTimePage() {
                     className={cn(
                       "text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl",
                       isTimerRunning
-                        ? "text-primary"
+                        ? isPaused
+                          ? "text-muted-foreground"
+                          : "text-primary"
                         : "text-muted-foreground"
                     )}
                   >
@@ -448,25 +480,46 @@ export function StudyTimePage() {
                   </span>
                 </div>
                 <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
-                  <Button
-                    type="button"
-                    onClick={handleStartTimer}
-                    disabled={isTimerRunning}
-                    className="min-h-12 w-full shrink-0 py-3 text-base [touch-action:manipulation] sm:min-w-[140px] sm:w-auto"
-                  >
-                    <Play className="mr-2 h-5 w-5 sm:h-4 sm:w-4" />
-                    計測開始
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={handleStopTimer}
-                    disabled={!isTimerRunning}
-                    className="min-h-12 w-full shrink-0 py-3 text-base [touch-action:manipulation] sm:min-w-[140px] sm:w-auto"
-                  >
-                    <Square className="mr-2 h-5 w-5 sm:h-4 sm:w-4" />
-                    終了
-                  </Button>
+                  {!isTimerRunning ? (
+                    <Button
+                      type="button"
+                      onClick={handleStartTimer}
+                      className="min-h-12 w-full shrink-0 py-3 text-base [touch-action:manipulation] sm:min-w-[140px] sm:w-auto"
+                    >
+                      <Play className="mr-2 h-5 w-5 sm:h-4 sm:w-4" />
+                      計測開始
+                    </Button>
+                  ) : (
+                    <>
+                      <Button
+                        type="button"
+                        variant={isPaused ? "default" : "outline"}
+                        onClick={isPaused ? handleResumeTimer : handlePauseTimer}
+                        className="min-h-12 w-full shrink-0 py-3 text-base [touch-action:manipulation] sm:min-w-[140px] sm:w-auto"
+                      >
+                        {isPaused ? (
+                          <>
+                            <Play className="mr-2 h-5 w-5 sm:h-4 sm:w-4" />
+                            再開
+                          </>
+                        ) : (
+                          <>
+                            <Pause className="mr-2 h-5 w-5 sm:h-4 sm:w-4" />
+                            一時停止
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={handleStopTimer}
+                        className="min-h-12 w-full shrink-0 py-3 text-base [touch-action:manipulation] sm:min-w-[140px] sm:w-auto"
+                      >
+                        <Square className="mr-2 h-5 w-5 sm:h-4 sm:w-4" />
+                        終了
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
 
